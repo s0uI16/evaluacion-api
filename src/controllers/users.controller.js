@@ -2,6 +2,8 @@ import bcrypt from 'bcrypt';
 import { getAllUsers, getUser, createUser, updateUser, deleteUser, userExists } from '../models/users.model.js';
 import { getPostsByUserId, deletePostsByUserId } from '../models/post.model.js';
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const getUsers = async (req, res, next) => {
   try {
     const users = await getAllUsers();
@@ -36,6 +38,14 @@ export const createNewUser = async (req, res, next) => {
       return res.status(400).json({ error: "Nombre, email y contraseña son requeridos" });
     }
 
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "El formato del email no es válido" });
+    }
+    
+    if (password.length < 8) {
+      return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
+    }
+
     // Hasheamos la contraseña antes de guardarla
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -68,13 +78,26 @@ export const updateExistingUser = async (req, res, next) => {
     if (!exists) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
+    
+    if (req.user.id !== id) {
+     return res.status(403).json({ error: "No tienes permiso para modificar este usuario" });
+    }
+    
+    if (email && !emailRegex.test(email)) {
+      return res.status(400).json({ error: "El formato del email no es válido" });
+    }
 
     const userData = {};
     if (name) userData.name = name;
     if (email) userData.email = email;
+    
+
     if (password) {
-      userData.password = await bcrypt.hash(password, 10);
-    }
+      if (password.length < 8) {
+        return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
+      }
+        userData.password = await bcrypt.hash(password, 10);
+      } 
 
     const updated = await updateUser(id, userData);
     res.json(updated);
@@ -93,6 +116,10 @@ export const deleteExistingUser = async (req, res, next) => {
     const exists = await userExists(id);
     if (!exists) {
       return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    if (req.user.id !== id) {
+     return res.status(403).json({ error: "No tienes permiso para eliminar este usuario" });
     }
 
     await deletePostsByUserId(id);

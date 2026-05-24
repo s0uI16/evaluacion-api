@@ -26,7 +26,7 @@ app.get('/', (req, res) => {
     },
   });
 });
-// app.use(sanitizeMiddleware);
+app.use(sanitizeMiddleware);
 app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
 app.use("/posts", postsRoutes);

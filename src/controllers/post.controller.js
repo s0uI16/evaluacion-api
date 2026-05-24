@@ -27,21 +27,14 @@ export const getPostById = async (req, res, next) => {
 
 export const createNewPost = async (req, res, next) => {
   try {
-    const { userId, title, content } = req.body;
+    const { title, content } = req.body;
 
-    if (!userId || !title || !content) {
-      return res.status(400).json({ error: "userId, title y content son requeridos" });
+    if (!title || !content) {
+      return res.status(400).json({ error: "title y content son requeridos" });
     }
 
-    const userIdNum = parseInt(userId, 10);
-    const exists = await userExists(userIdNum);
-    if (!exists) {
-      return res.status(404).json({ error: "El autor (Usuario) no existe" });
-    }
-
-    // Mapeamos a "user_id" tal como lo definimos en la base de datos
     const newPost = {
-      user_id: userIdNum,
+      user_id: req.user.id,
       title,
       content
     };
@@ -63,6 +56,10 @@ export const updateExistingPost = async (req, res, next) => {
       return res.status(404).json({ error: "Post no encontrado" });
     }
 
+    if (req.user.id !== postExists.user_id) {
+      return res.status(403).json({ error: "No tienes permiso para editar este post" });
+    }
+
     const postData = {};
     if (title) postData.title = title;
     if (content) postData.content = content;
@@ -81,6 +78,10 @@ export const deleteExistingPost = async (req, res, next) => {
     const postExists = await getPost(id);
     if (!postExists) {
       return res.status(404).json({ error: "Post no encontrado" });
+    }
+
+    if (req.user.id !== postExists.user_id) {
+      return res.status(403).json({ error: "No tienes permiso para eliminar este post" });
     }
 
     await deletePost(id);
